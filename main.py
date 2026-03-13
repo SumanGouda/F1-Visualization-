@@ -34,11 +34,9 @@ class F1ReplayWindow(arcade.Window):
         self.driver_metadata = {}  # Loaded from results.db
         self.sorted_drivers = []   # For the leaderboard
         self.track_points = []
-        self.session_time = 0.0    # The "Master Clock" for the replay
-        self.speed_multiplier = 2.0 
+        self.session_time = 0.0   
+        self.speed_multiplier = 1  
         
-        # Telemetry Cache (to avoid opening DB every frame)
-        self.telemetry_cache = {} 
         self.is_paused = False
         
         self.setup()
@@ -82,9 +80,6 @@ class F1ReplayWindow(arcade.Window):
                            for abbr, info in self.driver_metadata.items()}
 
         # 6. Linear Timing Initialization 
-        # Since your data is arranged lap 1 to end, starting at 0.0 is fine.
-        self.session_time = 0.0  
-        self.speed_multiplier = 1.0  
         self.is_paused = False      
         self.current_car_positions = {abbr: (0, 0) for abbr in self.driver_metadata.keys()}
         self.driver_row_counters = {abbr: 0 for abbr in self.driver_metadata.keys()}
@@ -205,7 +200,7 @@ class F1ReplayWindow(arcade.Window):
             color = self.car_colors.get(abbr, arcade.color.GRAY)
             curr_y = start_y - (i * spacing)
             
-            # Draw the Border (Team Color) [cite: 2026-02-20]
+            # Draw the Border (Team Color) 
             arcade.draw_rect_filled(
                 arcade.rect.XYWH(start_x, curr_y, box_width, box_height), 
                 color
@@ -237,11 +232,11 @@ class F1ReplayWindow(arcade.Window):
                 speed_ms = max(speed_kmh / 3.6, 0.5) # Minimum speed to avoid infinity
                 
                 gap_seconds = gap_meters / speed_ms
-                gap_display = f"+{max(0, gap_seconds):.3f}s"
+                gap_display = f"+{max(0, gap_seconds):.1f}s"
             # -----------------------
 
             
-            # Draw Rank & Abbreviation (Bold White) [cite: 2026-02-20]
+            # Draw Rank & Abbreviation (Bold White)  
             arcade.draw_text(
                 f"{i+1}  {abbr}", 
                 start_x - 110, curr_y, 
@@ -274,3 +269,4 @@ def main(delete_on_exit=True):
 
 if __name__ == "__main__": 
     main(delete_on_exit=False)
+
