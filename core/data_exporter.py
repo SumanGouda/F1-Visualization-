@@ -85,25 +85,6 @@ class DataExporter:
         conn.commit()
         conn.close()
            
-    def export_all_drivers(self):
-        """Exports each driver into their own independent database file. [cite: 2026-01-20]"""
-        results = self.sm.get_session_results()
-        if results is None or results.empty:
-            print("No session results found.")
-            return
-
-        driver_list = results['Abbreviation'].tolist()
-        print(f"Starting sequential export for {len(driver_list)} drivers...")
-
-        for abbr in driver_list:
-            try:
-                print(f"Processing: {abbr}...")
-                self._export_driver_race(abbr)
-            except Exception as e:
-                print(f"Failed export for {abbr}: {e}")
-
-        print("Export complete! Sequential databases are ready.")
-    
     def cleanup(self):
         gc.collect() 
         time.sleep(0.7) 
@@ -113,3 +94,83 @@ class DataExporter:
                 print(f"Successfully cleaned up: {self.base_path}")
             except PermissionError:
                  print(f"Warning: {self.base_path} is still locked. Cleanup skipped.")
+    
+    def _export_weather(self):
+        """Exports session weather data to a dedicated database file."""
+        db_path = os.path.join(self.base_path, "weather.db")
+        
+        if os.path.exists(db_path):
+            print("Skipping Weather: Database already exists.")
+            return
+
+        weather_data = self.sm.get_weather_data()
+        if weather_data is None or weather_data.empty:
+            print("No weather data found to export.")
+            return
+
+        conn = sqlite3.connect(db_path)
+        
+        # Ensure we start fresh with the cleaned feature [cite: 2026-01-20]
+        conn.execute('DROP TABLE IF EXISTS weather')
+        
+        # Cleaning: Convert Timedelta to total seconds for easier SQL math
+        weather_df = weather_data.copy()
+        weather_df['Time'] = weather_df['Time'].dt.total_seconds()
+
+        # Save to SQL
+        weather_df.to_sql('weather', conn, if_exists='replace', index=False)
+        
+        # Create an index on Time for faster lookups later
+        conn.execute("CREATE INDEX idx_weather_time ON weather(Time)")
+        
+        conn.commit()
+        conn.close()
+        print(f"Weather export complete: {db_path}")
+
+    def export_all_data(self):
+        results = self.sm.get_session_results()
+        if results is None or results.empty:
+            print("No session results found. Cannot export data.")
+            return
+
+        driver_list = results['Abbreviation'].tolist()
+        print(f"Starting sequential export for {len(driver_list)} drivers...")
+   
+        for abbr in driver_list:
+            try:
+                print(f"Processing Driver: {abbr}...")
+                self._export_driver_race(abbr)
+            except Exception as e:
+                print(f"Failed export for {abbr}: {e}")
+
+        try:
+            print("Processing: Weather...")
+            self._export_weather()
+        except Exception as e:
+            print(f"Failed to export weather data: {e}")
+
+        print("Export complete! All databases (Drivers & Weather) are ready.")       
+
+# Helper Functions
+              
+def get_max_session_rows(driver_abbrs, db_root):
+    max_rows = 0
+    
+    for abbr in driver_abbrs:
+        db_path = os.path.join(db_root, f"{abbr}.db")
+        if not os.path.exists(db_path):
+            continue
+            
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # SQL COUNT is nearly instantaneous compared to len(dataframe)
+        cursor.execute("SELECT COUNT(*) FROM telemetry")
+        count = cursor.fetchone()[0]
+        
+        if count > max_rows:
+            max_rows = count
+            
+        conn.close()
+    
+    return max_rows

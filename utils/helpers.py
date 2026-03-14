@@ -1,14 +1,50 @@
 # utils/helpers.py
 import numpy as np
+import sqlite3
+import os
 
 def get_screen_coords(x, y, rotation, track_scale, offset_x, offset_y):
-    # 1. Rotate [cite: 2026-01-20]
+    # 1. Rotate 
     rad = np.radians(rotation)
     tx = x * np.cos(rad) - y * np.sin(rad)
     ty = x * np.sin(rad) + y * np.cos(rad)
 
     # 2. Scale and Offset [cite: 2026-01-20]
     return (tx * track_scale) + offset_x, (ty * track_scale) + offset_y
+
+def calculate_weather_frame_ratio(driver_abbrs, db_path):
+    """
+    Calculates the ratio: (Max Telemetry Rows) / (Weather Rows).
+    Tells the main loop how many frames to wait before shifting the weather row.
+    """
+    max_telemetry_rows = 0
+    weather_rows = 0
+
+    try:
+        # 1. Find the driver with the most frames to set the 'Master' duration
+        for abbr in driver_abbrs:
+            driver_db = os.path.join(db_path, f"{abbr}.db")
+            if os.path.exists(driver_db):
+                with sqlite3.connect(driver_db) as conn:
+                    count = conn.execute("SELECT COUNT(*) FROM telemetry").fetchone()[0]
+                    if count > max_telemetry_rows:
+                        max_telemetry_rows = count
+
+        # 2. Get the total count of weather snapshots
+        weather_db = os.path.join(db_path, "weather.db")
+        if os.path.exists(weather_db):
+            with sqlite3.connect(weather_db) as conn:
+                weather_rows = conn.execute("SELECT COUNT(*) FROM weather").fetchone()[0]
+
+        # 3. Calculate Ratio (Floor division)
+        if weather_rows > 0:
+            ratio = max_telemetry_rows // weather_rows
+            return max(1, ratio) # Ensure ratio is at least 1
+            
+    except Exception as e:
+        print(f"Error calculating frame ratio: {e}")
+    
+    return 1 
 
 def prepare_track_layout(raw_x, raw_y, screen_width, screen_height, padding_left, rotation):
     """Fits the track perfectly within the available screen space."""

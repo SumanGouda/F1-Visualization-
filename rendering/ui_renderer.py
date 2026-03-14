@@ -60,8 +60,8 @@ def draw_lap_number(sorted_drivers, driver_metadata, screen_width, screen_height
     start_x = screen_width - 150 
     start_y = screen_height - 70
     
-    box_width = 240
-    box_height = 40  
+    box_width = 80
+    box_height = 50  
     border_thickness = 3
     
     # 2. Extract Data  
@@ -89,10 +89,17 @@ def draw_lap_number(sorted_drivers, driver_metadata, screen_width, screen_height
 
     # 4. Draw Lap Text
     arcade.draw_text(
-        f"LAP {lap_number} / {total_laps}", 
-        start_x, start_y, 
-        arcade.color.WHITE, 16, bold=True, 
-        anchor_x="center", anchor_y="center"
+        f"{lap_number} / {total_laps}\nLAPS", 
+        start_x, 
+        start_y, 
+        arcade.color.WHITE, 
+        14, 
+        bold=True, 
+        anchor_x="center", 
+        anchor_y="center",
+        multiline=True,       
+        width=box_width,     
+        align="center"     
     )
  
 def draw_corners(corner_data, rotation, track_scale, offset_x, offset_y):
@@ -146,7 +153,50 @@ def draw_corners(corner_data, rotation, track_scale, offset_x, offset_y):
             anchor_x="center",
             font_name="Kenney Future" # Optional: matches your card style
         )
-                  
+
+def draw_weather_card(weather_row, screen_width, screen_height):
+    if weather_row is None:
+        return
+
+    # Card Dimensions and Position (Bottom Left)
+    box_width, box_height = 240, 110
+    center_x, center_y = 145, 75 
+
+    # Draw Card Border and Background
+    arcade.draw_rect_filled(arcade.rect.XYWH(center_x, center_y, box_width, box_height), arcade.color.WHITE)
+    arcade.draw_rect_filled(arcade.rect.XYWH(center_x, center_y, box_width - 4, box_height - 4), arcade.color.BLACK)
+
+    try:
+        # Extracting data from the sqlite3.Row object
+        air_temp = f"{weather_row['AirTemp']}°C"
+        track_temp = f"{weather_row['TrackTemp']}°C"
+        hum = f"{weather_row['Humidity']}%"
+        wind = f"{weather_row['WindSpeed']}m/s"
+        
+        is_raining = weather_row['Rainfall']
+        status_text = "RAIN" if is_raining else "DRY"
+        status_color = arcade.color.SKY_BLUE if is_raining else arcade.color.LIGHT_GREEN
+    except (KeyError, TypeError):
+        return
+
+    # Positioning Constants
+    left_align = center_x - (box_width / 2) + 15
+    top_y = center_y + (box_height / 2) - 20
+
+    # Header
+    arcade.draw_text("SESSION WEATHER", left_align, top_y, arcade.color.YELLOW, 10, bold=True)
+    
+    # Status Indicator (Circle + Text)
+    arcade.draw_circle_filled(center_x + (box_width/2) - 65, top_y + 5, 5, status_color)
+    arcade.draw_text(status_text, center_x + (box_width/2) - 55, top_y, status_color, 10, bold=True)
+
+    # Weather Details Grid
+    row1 = f"AIR TEMP: {air_temp:>8} | TRACK: {track_temp:>8}"
+    row2 = f"HUMIDITY: {hum:>8} | WIND: {wind:>8}"
+    
+    arcade.draw_text(row1, left_align, top_y - 35, arcade.color.WHITE, 9, font_name="Courier New")
+    arcade.draw_text(row2, left_align, top_y - 55, arcade.color.WHITE, 9, font_name="Courier New")
+                   
 class UIRenderer:
     def __init__(self, width, height):
         self.width = width
@@ -160,7 +210,6 @@ class UIRenderer:
             arcade.color.WHITE,
             16
         )
-
         arcade.draw_text(
             f"Team: {team_name}",
             20,

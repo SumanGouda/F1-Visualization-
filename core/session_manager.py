@@ -7,6 +7,7 @@ class SessionManager:
         self.session = None
         self.year = year           
         self.gp = gp
+        self.weather_df = None
 
         try:
             self.session = fastf1.get_session(year, gp, session_type)
@@ -82,7 +83,7 @@ class SessionManager:
             return None
 
         return team_data
-    
+
     def get_weather_data(self):
         if self.session is None:
             return None
@@ -91,8 +92,8 @@ class SessionManager:
             return self.session.weather_data
         except Exception as e:
             print(f"Error retrieving weather data: {e}")
-            return None 
-    
+            return None
+
     def get_circuit_rotation(self):
         if self.session is None:
             return None
@@ -103,7 +104,7 @@ class SessionManager:
         except Exception as e:
             print(f"Error retrieving circuit rotation: {e}")
             return None
-    
+
     def get_corner_data(self):
         if self.session is None:
             return None
@@ -112,16 +113,16 @@ class SessionManager:
             circuit_info = self.session.get_circuit_info()
             corners = []
             for _, corner in circuit_info.corners.iterrows():
-                # Clean the data: ensure numbers are strings for the labels [cite: 2026-03-07]
                 corners.append({
-                    "number": str(corner['Number']), 
+                    "number": str(corner['Number']),
                     "x": float(corner['X']),
                     "y": float(corner['Y']),
-                    "angle": float(corner['Angle']), # Added: useful for rotating the label text [cite: 2026-03-07]
-                    "distance": float(corner['Distance']) # Added: helps identify which lap segment it's in [cite: 2026-03-07]
+                    "angle": float(corner['Angle']),
+                    "distance": float(corner['Distance'])
                 })
             return corners
         except Exception as e:
             print(f"Error retrieving corner data: {e}")
             return None
+
     
